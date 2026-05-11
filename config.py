@@ -7,6 +7,7 @@ load_dotenv()
 
 AWS_PROFILE = os.getenv("AWS_PROFILE")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID")
 
 def get_session():
     return boto3.Session(
