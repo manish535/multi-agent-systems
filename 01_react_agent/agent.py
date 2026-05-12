@@ -1,11 +1,3 @@
-# Day 1: ReAct loop — manual simulation
-# No LLM yet. We are playing the role of the LLM.
-# Goal: understand the loop before adding AI on top.
-
-# --- TOOLS ---
-# These are just normal Python functions.
-# In a real agent, these would call AWS APIs, Slack, databases etc.
-
 def get_aws_cost(service):
     """Fake tool: returns AWS cost for a service"""
     costs = {
