@@ -130,7 +130,7 @@ class ReActAgent:
             try:
                 response = self._call_llm(messages)
             except Exception as e:
-                self._log(f"❌ LLM call failed: {e}")
+                self._log(f" LLM call failed: {e}")
                 return f"Agent failed: {str(e)}"
 
             stop_reason = response["stopReason"]
@@ -140,7 +140,7 @@ class ReActAgent:
             # Claude is done
             if stop_reason == "end_turn":
                 final_answer = response_message["content"][0]["text"]
-                self._log(f"\n✅ Final Answer: {final_answer}")
+                self._log(f"\n Final Answer: {final_answer}")
                 break
 
             # Claude wants to use tools
@@ -176,7 +176,7 @@ class ReActAgent:
                     })
 
         # Print token usage summary
-        self._log(f"\n📊 Token Usage:")
+        self._log(f"\n Token Usage:")
         self._log(f"   Input tokens : {self.total_input_tokens}")
         self._log(f"   Output tokens: {self.total_output_tokens}")
         self._log(f"   Total tokens : {self.total_input_tokens + self.total_output_tokens}")
@@ -200,7 +200,7 @@ def get_aws_cost(service: str) -> str:
 
 
 def send_slack_alert(message: str) -> str:
-    print(f"\n[SLACK] 🔔 {message}")
+    print(f"\n[SLACK] {message}")
     return "Alert delivered to #aws-costs"
 
 
