@@ -30,7 +30,7 @@ llm = ChatBedrock(
 )
 
 # ============================================================
-# Step 2 — Define tools with @tool decorator
+# Tools
 # ============================================================
 
 @tool
@@ -97,7 +97,7 @@ def get_cost_forecast(service: str, months_ahead: int = 1) -> str:
 tools = [get_aws_cost, send_slack_alert, get_current_month, get_cost_forecast]
 
 # ============================================================
-# Step 3 — Create agent
+# Agent
 # ============================================================
 memory = MemorySaver()
 
@@ -113,15 +113,11 @@ agent = create_agent(
 )
 
 # ============================================================
-# Step 4 — Run tasks
+# Helper — reusable run function
 # ============================================================
 
-def run_task(task: str, thread_id: str = "default"):
-    print(f"\n{'='*55}")
-    print(f"TASK: {task}")
-    print(f"{'='*55}")
-
-    # thread_id ties messages together for memory tracking
+def run_task(task: str, thread_id: str = "default") -> str:
+    """Run a task against the agent. Returns final answer string."""    
     config = {"configurable": {"thread_id": thread_id}}
 
     result = agent.invoke(
@@ -129,44 +125,19 @@ def run_task(task: str, thread_id: str = "default"):
         config=config
     )
 
-    # LangChain returns messages list — last one is final answer
+
     final = result["messages"][-1].content
     if isinstance(final, list):
         final = final[0].get("text", str(final))
-    print(f"\n Final Answer: {final}")
-
-    # Token usage — LangChain tracks this automatically
-    last_msg = result["messages"][-1]
-    if hasattr(last_msg, "usage_metadata") and last_msg.usage_metadata:
-        usage = last_msg.usage_metadata
-        print(f"\n Token Usage:")
-        print(f"   Input tokens : {usage.get('input_tokens', 'N/A')}")
-        print(f"   Output tokens: {usage.get('output_tokens', 'N/A')}")
 
     return final
 
 
+# ============================================================
+# Run directly for testing
+# ============================================================
+
 if __name__ == "__main__":
-    # Task 1 — simple
-    run_task("What is the EC2 cost this month?", thread_id="task1")
-
-    print("\n\n")
-
-    # Task 2 — multi-step conditional
-    run_task("Check EC2 and RDS costs. If either exceeds $100, send a Slack alert.")
-
-    print("\n\n")
-
-    # Task 3 — forecast
-    run_task("What will EC2 cost in 3 months?", thread_id="forecast-task")
-
-    # Memory problem demonstration
-    print("\n\n=== MEMORY PROBLEM DEMO ===")
-    run_task("My name is Manish and I am monitoring AWS costs", thread_id="memory-demo")
-    run_task("What is my name?", thread_id="memory-demo")
-
-    print("\n\n")
-    print("=" * 55)
-    print("NEW SESSION — different thread_id, no memory")
-    print("=" * 55)
-    run_task("What is my name?", thread_id="new-session")
+    print(run_task("What is the EC2 cost this month?", thread_id="test"))
+    print(run_task("Check EC2 and RDS. Alert if either > $100.", thread_id="test"))
+    print(run_task("What will EC2 cost in 3 months?", thread_id="test"))

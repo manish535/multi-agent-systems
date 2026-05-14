@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aws-cost-agent-svc
+  namespace: default
+spec:
+  selector:
+    app: aws-cost-agent
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+      nodePort: 30800

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-cost-agent
+  namespace: default
+  labels:
+    app: aws-cost-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aws-cost-agent
+  template:
+    metadata:
+      labels:
+        app: aws-cost-agent
+    spec:
+      containers:
+        - name: aws-cost-agent
+          image: aws-cost-agent:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: AWS_PROFILE
+              value: "development"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: BEDROCK_MODEL_ID
+              value: "us.anthropic.claude-sonnet-4-20250514-v1:0"
+            - name: AWS_CONFIG_FILE
+              value: "/root/.aws/config"
+          volumeMounts:
+            - name: aws-credentials
+              mountPath: /root/.aws
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: aws-credentials
+          hostPath:
+            path: /home/docker/.aws
+            type: Directory
