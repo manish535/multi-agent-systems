@@ -164,3 +164,9 @@ if __name__ == "__main__":
     print("\n\n=== MEMORY PROBLEM DEMO ===")
     run_task("My name is Manish and I am monitoring AWS costs", thread_id="memory-demo")
     run_task("What is my name?", thread_id="memory-demo")
+
+    print("\n\n")
+    print("=" * 55)
+    print("NEW SESSION — different thread_id, no memory")
+    print("=" * 55)
+    run_task("What is my name?", thread_id="new-session")
