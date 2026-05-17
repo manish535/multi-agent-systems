@@ -70,21 +70,57 @@ def get_aws_cost(service: str) -> str:
 @tool
 def check_github_pr(pr_url: str) -> str:
     """
-    Check GitHub PR status and review requirements.
-    Input: GitHub PR URL
-    Use when someone requests a PR merge.
+    Check GitHub PR status and validate against PAR Tech merge requirements.
+    Input: GitHub PR URL from punchh/script-tasks repo.
     """
-    # In production: call GitHub API
-    return {
-        "pr_url":        pr_url,
-        "status":        "open",
-        "dba_approved":  False,
-        "checks_passed": True,
-        "files_changed": ["db/migrate/20260517_add_index.rb"],
-        "requires_dba":  True,
-        "message":       "DBA review required — migration file detected"
-    }
+    import urllib.request
+    import json
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent))
+    from rag import search_knowledge_base
 
+    # Get GitHub token from Secrets Manager
+    sm    = get_session().client("secretsmanager", region_name="us-east-1")
+    token = sm.get_secret_value(
+        SecretId=os.getenv("GITHUB_TOKEN_SECRET", "cost-optimizer/github-token")
+    )["SecretString"]
+
+    # Parse PR URL → owner/repo/number
+    parts     = pr_url.rstrip("/").split("/")
+    owner     = parts[-4]
+    repo      = parts[-3]
+    pr_number = parts[-1]
+
+    # Call GitHub API
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}",
+        headers={
+            "Authorization": f"token {token}",
+            "Accept":        "application/vnd.github+json"
+        }
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            pr = json.loads(resp.read())
+    except Exception as e:
+        return f"GitHub API failed: {str(e)}"
+
+    # Get PAR Tech merge rules from S3
+    merge_rules = search_knowledge_base(
+        "PR merge checklist DBA approval required fields"
+    )
+
+    return {
+        "pr_number":   pr_number,
+        "title":       pr.get("title", ""),
+        "status":      pr.get("state", ""),
+        "author":      pr.get("user", {}).get("login", ""),
+        "description": pr.get("body", ""),
+        "mergeable":   pr.get("mergeable", False),
+        "merge_rules": merge_rules
+    }
 
 @tool
 def check_k8s_pods(namespace: str, service: str = "") -> str:
@@ -141,7 +177,13 @@ def call_llm(state: OncallAgentState) -> dict:
         system = SystemMessage(content=(
             "You are an oncall DevOps agent for PAR Technology (Punchh platform). "
             "You help with AWS costs, GitHub PR merges, Kubernetes issues, and alerts. "
-            "Always use tools to get real data. Be concise and actionable."
+            "Always use tools to get real data. Be concise and actionable.\n\n"
+            "For PR merge requests: "
+            "1. Call check_github_pr to get PR data and merge rules from Confluence runbooks. "
+            "2. Validate EVERY required field is present in PR description. "
+            "3. Check if DBA approval is needed based on the rules. "
+            "4. Give clear YES/NO merge decision with specific reasons. "
+            "5. If DBA approval needed — say exactly that and stop."
         ))
 
         response = llm_with_tools.invoke([system] + state["messages"])
@@ -269,21 +311,21 @@ if __name__ == "__main__":
 
     # Simulate real @oncall-punchh-devops scenarios
     test_cases = [
+        # {
+        #     "message":    "What is EC2 cost this month?",
+        #     "session_id": "test-cost-001",
+        #     "channel":    "#aws-costs"
+        # },
         {
-            "message":    "What is EC2 cost this month?",
-            "session_id": "test-cost-001",
-            "channel":    "#aws-costs"
-        },
-        {
-            "message":    "Please merge this PR: https://github.com/punchh/script-tasks/pull/2301",
+            "message":    "Please merge this PR: https://github.com/punchh/script-tasks/pull/2301",    
             "session_id": "test-pr-001",
             "channel":    "#git-script-repo"
-        },
-        {
-            "message":    "developer instance not getting up, pods crashing in dev namespace",
-            "session_id": "test-env-001",
-            "channel":    "#devops-non-prod-punchh"
-        }
+        }#,
+        # {
+        #     "message":    "developer instance not getting up, pods crashing in dev namespace",
+        #     "session_id": "test-env-001",
+        #     "channel":    "#devops-non-prod-punchh"
+        # }
     ]
 
 
