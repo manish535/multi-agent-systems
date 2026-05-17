@@ -1,2 +1,5 @@
 .env
 reference
+knowledge_base/
+*.tfvars
+05_agentcore/knowledge_base/
